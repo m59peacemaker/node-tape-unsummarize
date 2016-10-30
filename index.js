@@ -15,13 +15,12 @@ const unSum = () => {
   return through((push, chunk, enc, cb) => {
     const newValue = chunk.value
 
-    const oldValue = lastThreeValues.add(newValue)
+    lastThreeValues.add(newValue)
 
-    if (oldValue !== undefined) {
-      push(oldValue + '\n')
-    }
-
-    if (lastThreeValues.match()) {
+    if (lastThreeValues.perfectMatch()) {
+      lastThreeValues.clear()
+    } else if (!lastThreeValues.mightMatchLater()) {
+      lastThreeValues.get().forEach(value => push(value + '\n'))
       lastThreeValues.clear()
     }
 
@@ -39,12 +38,23 @@ function lastValuesClosure(regexes) {
     return values.filter(str => str.length > 0)
   }
 
-  function match() {
+  function existingValuesMatchRegexes(lines) {
+    return combine({ value: lines, regex: regexes })
+        .every(({ regex, value }) => !value || regex.test(value))
+  }
+
+  function mightMatchLater() {
+    const relevantLines = linesToConsider()
+
+    return relevantLines.length < regexes.length
+      && existingValuesMatchRegexes(relevantLines)
+  }
+
+  function perfectMatch() {
     const relevantLines = linesToConsider()
 
     return relevantLines.length === regexes.length
-      && combine({ value: relevantLines, regex: regexes })
-        .every(({ regex, value }) => regex.test(value))
+      && existingValuesMatchRegexes(relevantLines)
   }
 
   function add(value) {
@@ -55,7 +65,8 @@ function lastValuesClosure(regexes) {
   }
 
   return {
-    match,
+    mightMatchLater,
+    perfectMatch,
     add,
     get: () => values,
     clear: () => values = []
