@@ -1,6 +1,6 @@
 {
   "name": "tape-unsummarize",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Filters out the diagnostic summary lines output by [tape](https://www.npmjs.com/package/tape).",
   "keywords": [
     "tape",

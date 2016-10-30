@@ -9,12 +9,41 @@ const summaryRegexes = [
   /^# (ok|fail  \d+)$/,
 ]
 
+const lastValuesClosure = (regexes) => {
+  let values = []
+
+  // ignore blank lines
+  const linesToConsider = () => values.filter(str => str.length > 0)
+
+  const existingValuesMatchRegexes = (lines) => {
+    return combine({value: lines, regex: regexes})
+      .every(({regex, value}) => value === undefined || regex.test(value))
+  }
+
+  const mightMatchLater = () => {
+    const relevantLines = linesToConsider()
+    return relevantLines.length < regexes.length && existingValuesMatchRegexes(relevantLines)
+  }
+
+  const perfectMatch = () => {
+    const relevantLines = linesToConsider()
+    return relevantLines.length === regexes.length && existingValuesMatchRegexes(relevantLines)
+  }
+
+  return {
+    mightMatchLater,
+    perfectMatch,
+    add: value => values.push(value),
+    get: () => values,
+    clear: () => values = []
+  }
+}
+
 const unSum = () => {
   const lastThreeValues = lastValuesClosure(summaryRegexes)
 
   return through((push, chunk, enc, cb) => {
     const newValue = chunk.value
-
     lastThreeValues.add(newValue)
 
     if (lastThreeValues.perfectMatch()) {
@@ -25,52 +54,10 @@ const unSum = () => {
     }
 
     cb()
-  }, function onEnd(push, cb) {
+  }, (push, cb) => {
     lastThreeValues.get().forEach(value => push(value + '\n'))
     cb()
   })
-}
-
-function lastValuesClosure(regexes) {
-  let values = []
-
-  function linesToConsider() {
-    return values.filter(str => str.length > 0)
-  }
-
-  function existingValuesMatchRegexes(lines) {
-    return combine({ value: lines, regex: regexes })
-        .every(({ regex, value }) => !value || regex.test(value))
-  }
-
-  function mightMatchLater() {
-    const relevantLines = linesToConsider()
-
-    return relevantLines.length < regexes.length
-      && existingValuesMatchRegexes(relevantLines)
-  }
-
-  function perfectMatch() {
-    const relevantLines = linesToConsider()
-
-    return relevantLines.length === regexes.length
-      && existingValuesMatchRegexes(relevantLines)
-  }
-
-  function add(value) {
-    values.push(value)
-    if (linesToConsider().length > regexes.length) {
-      return values.shift()
-    }
-  }
-
-  return {
-    mightMatchLater,
-    perfectMatch,
-    add,
-    get: () => values,
-    clear: () => values = []
-  }
 }
 
 const unSummarize = () => {
