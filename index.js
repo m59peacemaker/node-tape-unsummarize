@@ -1,60 +1,76 @@
 const through = require('throo').obj
 const duplex = require('duplexer')
 const parser = require('tap_parser')
+const combine = require('combine-arrays')
 
-const isSummaryLine = chunk => {
-  return chunk.type === 'diagnostic' && /^(tests|pass|fail) +\d+$/.test(chunk.parsed.message)
-}
-
-const sendChunk = (push, chunk) => push(chunk.value + '\n')
-
-const beginning = [
+const summaryRegexes = [
   /^# tests \d+$/,
-  /^# pass  \d+$/
+  /^# pass  \d+$/,
+  /^# (ok|fail  \d+)$/,
 ]
-const pass = [
-  ...beginning,
-  /^# ok$/
-]
-const fail = [
-  ...beginning,
-  /^# fail  \d+$/
-]
-
-const match = (pending, rs) => pending.every((v, idx) => rs[idx].test(v))
 
 const unSum = () => {
-  let pendingValues = []
-  let afterPlan = false
-  let hasFailingTest = false
+  const lastThreeValues = lastValuesClosure(summaryRegexes)
+
   return through((push, chunk, enc, cb) => {
-    if (chunk.type === 'test' && chunk.parsed.ok === false) {
-      hasFailingTest = true
+    const newValue = chunk.value
+
+    lastThreeValues.add(newValue)
+
+    if (lastThreeValues.perfectMatch()) {
+      lastThreeValues.clear()
+    } else if (!lastThreeValues.mightMatchLater()) {
+      lastThreeValues.get().forEach(value => push(value + '\n'))
+      lastThreeValues.clear()
     }
 
-    if (!afterPlan) {
-      if (chunk.type === 'plan') {
-        afterPlan = true
-      }
-      sendChunk(push, chunk)
-      return cb()
-    }
-    pendingValues.push(chunk.value)
-    const values = pendingValues.filter(v => v.length)
-    const matchArray = hasFailingTest ? fail : pass
-    const mustMatch = matchArray.slice(0, values.length)
-    const matched = match(values, mustMatch)
-    if (matched) {
-      if (values.length === matchArray.length) {
-        pendingValues = []
-      }
-      cb()
-    } else {
-      pendingValues.forEach(v => push(v + '\n'))
-      pendingValues = []
-      cb()
-    }
+    cb()
+  }, function onEnd(push, cb) {
+    lastThreeValues.get().forEach(value => push(value + '\n'))
+    cb()
   })
+}
+
+function lastValuesClosure(regexes) {
+  let values = []
+
+  function linesToConsider() {
+    return values.filter(str => str.length > 0)
+  }
+
+  function existingValuesMatchRegexes(lines) {
+    return combine({ value: lines, regex: regexes })
+        .every(({ regex, value }) => !value || regex.test(value))
+  }
+
+  function mightMatchLater() {
+    const relevantLines = linesToConsider()
+
+    return relevantLines.length < regexes.length
+      && existingValuesMatchRegexes(relevantLines)
+  }
+
+  function perfectMatch() {
+    const relevantLines = linesToConsider()
+
+    return relevantLines.length === regexes.length
+      && existingValuesMatchRegexes(relevantLines)
+  }
+
+  function add(value) {
+    values.push(value)
+    if (linesToConsider().length > regexes.length) {
+      return values.shift()
+    }
+  }
+
+  return {
+    mightMatchLater,
+    perfectMatch,
+    add,
+    get: () => values,
+    clear: () => values = []
+  }
 }
 
 const unSummarize = () => {
