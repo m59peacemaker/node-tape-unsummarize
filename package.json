@@ -1,0 +1,41 @@
+{
+  "name": "tape-unsummarize",
+  "version": "1.0.0",
+  "description": "Filters out the diagnostic summary lines output by [tape](https://www.npmjs.com/package/tape).",
+  "keywords": [
+    "tape",
+    "summary",
+    "end",
+    "remove",
+    "strip",
+    "custom",
+    "tap",
+    "output",
+    "cli"
+  ],
+  "main": "index.js",
+  "bin": {
+    "tape-unsummarize": "bin/cmd.js"
+  },
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m59peacemaker/node-tape-unsummarize"
+  },
+  "author": {
+    "name": "Johnny Hauser",
+    "email": "johnnyhauser@gmail.com"
+  },
+  "license": "VOL",
+  "dependencies": {
+    "duplexer": "^0.1.1",
+    "tap_parser": "^1.0.3",
+    "throo": "^1.0.0",
+    "through2": "^2.0.1"
+  },
+  "devDependencies": {
+    "tape": "^4.6.2"
+  }
+}
