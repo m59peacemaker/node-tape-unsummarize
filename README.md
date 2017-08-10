@@ -5,7 +5,7 @@ Filters out the diagnostic summary lines output by [tape](https://www.npmjs.com/
 ## install
 
 ```sh
-npm install tap-unsummarize
+npm install tape-unsummarize
 ```
 
 ## example
@@ -28,7 +28,7 @@ ok 2 should be equal
 ```
 
 ```sh
-$ tape **/*.test.js | tap-unsummarize
+$ tape **/*.test.js | tape-unsummarize
 
 TAP version 13
 # test 1
